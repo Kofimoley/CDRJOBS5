@@ -36,8 +36,8 @@ calculate_cdr_jobs <- function(db_path, db_name, dat_file, scenario_list = NULL,
   model_output <- getQuery(data, "CO2 sequestration by tech")
 
   # Apply defaults for scenarios and regions
-  scenario_list <- scenario_list %||% unique(model_output$scenario)
-  region_list <- region_list %||% unique(model_output$region)
+  scenario_list <- ifelse(is.null(scenario_list), unique(model_output$scenario), scenario_list)
+  region_list <- ifelse(is.null(region_list), unique(model_output$region), region_list)
 
   # Filter and reshape data
   data_long <- model_output %>%
