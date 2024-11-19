@@ -32,8 +32,19 @@ calculate_cdr_jobs <- function(db_path, db_name, dat_file, scenario_list = NULL,
 
   # Connect to GCAM database and execute the query
   conn <- localDBConn(db_path, db_name)
-  data <- addScenario(conn, dat_file, scenario_list, query_file)
+  data <- tryCatch(
+    {
+      addScenario(conn, dat_file, scenario_list, query_file)
+    },
+    error = function(e) {
+      message("Skipping query since it already exists in the database.")
+      addScenario(conn, dat_file)  # Load existing results
+    }
+  )
   model_output <- getQuery(data, "CO2 sequestration by tech")
+
+  # Ensure unique column names in the model output
+  model_output <- model_output %>% rename_with(make.unique)
 
   # Apply defaults for scenarios and regions
   scenario_list <- ifelse(is.null(scenario_list), unique(model_output$scenario), scenario_list)
@@ -42,7 +53,7 @@ calculate_cdr_jobs <- function(db_path, db_name, dat_file, scenario_list = NULL,
   # Filter and reshape data
   data_long <- model_output %>%
     filter(scenario %in% scenario_list, region %in% region_list) %>%
-    pivot_longer(cols = starts_with("Year"), names_to = "Year", values_to = "value") %>%
+    pivot_longer(cols = starts_with("Year"), names_to = "Year", values_to = "value", names_repair = "unique") %>%
     mutate(value = as.numeric(value))
 
   # Load job intensities
