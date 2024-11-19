@@ -43,11 +43,8 @@ calculate_cdr_jobs <- function(db_path, db_name, dat_file, scenario_list = NULL,
   )
   model_output <- getQuery(data, "CO2 sequestration by tech")
 
-  # Ensure unique column names
-  model_output <- model_output %>% rename_with(make.unique)
-
-  # Dynamically identify the correct "value" column
-  value_col <- grep("^value", colnames(model_output), value = TRUE)[1]
+  # Identify year columns dynamically (numeric column names)
+  year_cols <- colnames(model_output)[grepl("^[0-9]{4}$", colnames(model_output))]
 
   # Apply defaults for scenarios and regions
   scenario_list <- ifelse(is.null(scenario_list), unique(model_output$scenario), scenario_list)
@@ -56,8 +53,8 @@ calculate_cdr_jobs <- function(db_path, db_name, dat_file, scenario_list = NULL,
   # Filter and reshape data
   data_long <- model_output %>%
     filter(scenario %in% scenario_list, region %in% region_list) %>%
-    pivot_longer(cols = starts_with("Year"), names_to = "Year", values_to = "value") %>%
-    mutate(value = as.numeric(.data[[value_col]]))
+    pivot_longer(cols = all_of(year_cols), names_to = "Year", values_to = "value") %>%
+    mutate(Year = as.numeric(Year), value = as.numeric(value))
 
   # Load job intensities
   data("CDR_Job_Inten", package = "CDRJOBS5")
