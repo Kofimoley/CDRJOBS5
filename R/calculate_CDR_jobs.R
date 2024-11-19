@@ -43,8 +43,11 @@ calculate_cdr_jobs <- function(db_path, db_name, dat_file, scenario_list = NULL,
   )
   model_output <- getQuery(data, "CO2 sequestration by tech")
 
-  # Ensure unique column names in the model output
+  # Ensure unique column names
   model_output <- model_output %>% rename_with(make.unique)
+
+  # Dynamically identify the correct "value" column
+  value_col <- grep("^value", colnames(model_output), value = TRUE)[1]
 
   # Apply defaults for scenarios and regions
   scenario_list <- ifelse(is.null(scenario_list), unique(model_output$scenario), scenario_list)
@@ -53,8 +56,8 @@ calculate_cdr_jobs <- function(db_path, db_name, dat_file, scenario_list = NULL,
   # Filter and reshape data
   data_long <- model_output %>%
     filter(scenario %in% scenario_list, region %in% region_list) %>%
-    pivot_longer(cols = starts_with("Year"), names_to = "Year", values_to = "value", names_repair = "unique") %>%
-    mutate(value = as.numeric(value))
+    pivot_longer(cols = starts_with("Year"), names_to = "Year", values_to = "value") %>%
+    mutate(value = as.numeric(.data[[value_col]]))
 
   # Load job intensities
   data("CDR_Job_Inten", package = "CDRJOBS5")
@@ -75,27 +78,27 @@ calculate_cdr_jobs <- function(db_path, db_name, dat_file, scenario_list = NULL,
     list(
       total_annual_jobs = df %>%
         group_by(Year, scenario, region) %>%
-        summarise(jobs = sum(.data[[metric]])),
+        summarise(jobs = sum(.data[[metric]]), .groups = "drop"),
       cumulative_jobs = df %>%
         group_by(scenario, region) %>%
-        summarise(jobs = sum(.data[[metric]])),
+        summarise(jobs = sum(.data[[metric]]), .groups = "drop"),
       annual_jobs_by_technology = df %>%
         group_by(Year, main_technology, scenario, region) %>%
-        summarise(jobs = sum(.data[[metric]])),
+        summarise(jobs = sum(.data[[metric]]), .groups = "drop"),
       cumulative_jobs_by_technology = df %>%
         group_by(main_technology, scenario, region) %>%
-        summarise(jobs = sum(.data[[metric]])),
+        summarise(jobs = sum(.data[[metric]]), .groups = "drop"),
       global_total_annual_jobs = df %>%
         group_by(Year) %>%
-        summarise(jobs = sum(.data[[metric]])),
+        summarise(jobs = sum(.data[[metric]]), .groups = "drop"),
       global_cumulative_jobs = df %>%
-        summarise(jobs = sum(.data[[metric]])),
+        summarise(jobs = sum(.data[[metric]]), .groups = "drop"),
       global_annual_jobs_by_technology = df %>%
         group_by(Year, main_technology) %>%
-        summarise(jobs = sum(.data[[metric]])),
+        summarise(jobs = sum(.data[[metric]]), .groups = "drop"),
       global_cumulative_jobs_by_technology = df %>%
         group_by(main_technology) %>%
-        summarise(jobs = sum(.data[[metric]]))
+        summarise(jobs = sum(.data[[metric]]), .groups = "drop")
     )
   }
 
